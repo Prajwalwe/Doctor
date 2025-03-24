@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Patient</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+      .modal {
+        display: block;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        width: 300px;
+      }
+      .modal input,
+      .modal select {
+        width: 100%;
+        padding: 8px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      .modal button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      .modal button:hover {
+        background-color: #0056b3;
+      }
+      .close-btn {
+        background-color: red;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="modal" id="patientModal">
+      <h3>Add Patient Details</h3>
+      <form id="patientForm">
+        <input
+          type="text"
+          id="patientName"
+          placeholder="Patient Name"
+          required
+        />
+        <input type="number" id="patientAge" placeholder="Age" required />
+        <select id="patientGender" required>
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+        <input
+          type="text"
+          id="patientBloodGroup"
+          placeholder="Blood Group"
+          required
+        />
+        <input
+          type="text"
+          id="patientCondition"
+          placeholder="Condition (e.g. Diabetic, Normal)"
+        />
+        <input
+          type="text"
+          id="patientProblem"
+          placeholder="Problem (e.g. Fever, Injury)"
+        />
+        <button type="button" onclick="savePatient()">Save</button>
+        <button type="button" class="close-btn" onclick="closeModal()">
+          Close
+        </button>
+      </form>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyCkuZ6nR6g2CDtj0jriWxzQULUwL8WKk_o",
+        authDomain: "blood-bank-c406a.firebaseapp.com",
+        projectId: "blood-bank-c406a",
+        storageBucket: "blood-bank-c406a.appspot.com",
+        messagingSenderId: "757939862593",
+        appId: "1:757939862593:web:32b7cfb830fe67c36edac0",
+        measurementId: "G-DXJPL8RLDQ",
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      async function savePatient() {
+        let name = document.getElementById("patientName").value;
+        let age = document.getElementById("patientAge").value;
+        let gender = document.getElementById("patientGender").value;
+        let bloodGroup = document.getElementById("patientBloodGroup").value;
+        let condition = document.getElementById("patientCondition").value;
+        let problem = document.getElementById("patientProblem").value;
+
+        if (!name || !age || !gender || !bloodGroup) {
+          alert("Please fill all required fields!");
+          return;
+        }
+
+        try {
+          await addDoc(collection(db, "patients"), {
+            name,
+            age: parseInt(age),
+            gender,
+            bloodGroup,
+            condition,
+            problem,
+          });
+          alert("Patient added successfully!");
+          document.getElementById("patientForm").reset();
+        } catch (error) {
+          console.error("Error saving patient data: ", error);
+          alert("Error saving patient data.");
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("patientModal").style.display = "none";
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Doctor Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+    <script type="module">
+      import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+
+      const genAI = new GoogleGenerativeAI(
+        "AIzaSyALWlbXC2RpSrGqzSr7Ubjm_UwSY8W7IbY"
+      );
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      window.getAIResponse = async function () {
+        const name = document.getElementById("patientName").value.trim();
+        const query = document.getElementById("prompt").value.trim();
+        const chatBox = document.getElementById("chatBox");
+
+        if (!name || !query) return;
+
+        chatBox.innerHTML += `<div class='user-message'><strong>You:</strong> ${query}</div>`;
+        document.getElementById("prompt").value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+          const patientResponse = await axios.get(
+            `http://localhost:5000/patients/name/${name}`
+          );
+          const patientInfo = patientResponse.data;
+
+          if (!patientInfo) {
+            chatBox.innerHTML += `<div class='error-message'>No patient found with name: ${name}</div>`;
+            return;
+          }
+
+          const fullPrompt = `Patient Details: ${JSON.stringify(
+            patientInfo,
+            null,
+            2
+          )}\n\nQuery: ${query}`;
+
+          const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
+          });
+          const aiResponse =
+            result?.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "No response from AI.";
+
+          chatBox.innerHTML += `<div class='ai-message'><strong>AI:</strong> ${aiResponse.replace(
+            /\n/g,
+            "<br>"
+          )}</div>`;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        } catch (error) {
+          chatBox.innerHTML += `<div class='error-message'>Error generating response.</div>`;
+        }
+      };
+    </script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      .chat-container {
+        width: 400px;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px gray;
+      }
+      .chat-box {
+        height: 300px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+      .user-message,
+      .ai-message {
+        padding: 8px;
+        border-radius: 5px;
+        margin: 5px 0;
+      }
+      .user-message {
+        background: #d1e7dd;
+        text-align: right;
+      }
+      .ai-message {
+        background: #e6f7ff;
+        text-align: left;
+      }
+      .error-message {
+        color: red;
+        text-align: center;
+      }
+      input,
+      textarea,
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+      }
+      button {
+        background-color: blue;
+        color: white;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <h2>AI Doctor Assistant</h2>
+      <label for="patientName">Patient Name:</label>
+      <input id="patientName" placeholder="Enter name..." />
+
+      <div class="chat-box" id="chatBox"></div>
+
+      <textarea id="prompt" placeholder="Enter your query..."></textarea>
+      <button onclick="getAIResponse()">Send</button>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Doctor Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+    <script type="module">
+      import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+
+      const genAI = new GoogleGenerativeAI(
+        "AIzaSyALWlbXC2RpSrGqzSr7Ubjm_UwSY8W7IbY"
+      );
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      function extractName(query) {
+        // Match capitalized names or properly formatted words
+        const nameMatch = query.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\b/);
+        return nameMatch ? nameMatch[0] : null;
+      }
+
+      window.getAIResponse = async function () {
+        const query = document.getElementById("prompt").value.trim();
+
+        if (!query) {
+          document.getElementById("response").innerHTML =
+            "<p style='color: red;'>Please enter a query.</p>";
+          return;
+        }
+
+        document.getElementById("response").innerHTML =
+          "<p style='color: blue;'>Processing...</p>";
+
+        const name = extractName(query);
+        if (!name) {
+          document.getElementById("response").innerHTML =
+            "<p style='color: red;'>Patient name not found in query.</p>";
+          return;
+        }
+
+        try {
+          const patientResponse = await axios.get(
+            `http://localhost:5000/patients/name/${name}`
+          );
+          const patientInfo = patientResponse.data;
+
+          if (!patientInfo) {
+            document.getElementById(
+              "response"
+            ).innerHTML = `<p style='color: red;'>No patient found with name: ${name}</p>`;
+            return;
+          }
+
+          const fullPrompt = `Patient Details: ${JSON.stringify(
+            patientInfo,
+            null,
+            2
+          )}\n\nQuery: ${query}`;
+          const result = await model.generateContent(fullPrompt);
+          const aiResponse =
+            result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (aiResponse) {
+            document.getElementById("response").innerHTML = `
+              <div style="background: #e6f7ff; padding: 10px; border-left: 5px solid blue; border-radius: 5px;">
+                <p><strong>AI Suggestion:</strong></p>
+                <p>${aiResponse.replace(/\n/g, "<br>")}</p>
+              </div>
+            `;
+          } else {
+            document.getElementById("response").innerHTML =
+              "<p style='color: red;'>Unexpected response format.</p>";
+          }
+        } catch (error) {
+          document.getElementById("response").innerHTML =
+            "<p style='color: red;'>Error fetching patient details or generating response.</p>";
+          console.error("Error:", error);
+        }
+      };
+    </script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 20px;
+        background-color: #f4f4f4;
+      }
+      .container {
+        max-width: 600px;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px gray;
+      }
+      textarea,
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+      }
+      button {
+        background-color: blue;
+        color: white;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>AI Doctor Assistant</h2>
+      <label for="prompt"
+        >Enter Query (include patient's name in the query):</label
+      >
+      <textarea
+        id="prompt"
+        placeholder="e.g., Prajwal Kumar has a fever. What should he do?"
+      ></textarea>
+      <button onclick="getAIResponse()">Generate Response</button>
+      <h3>Response:</h3>
+      <div id="response"></div>
+    </div>
+  </body>
+</html>

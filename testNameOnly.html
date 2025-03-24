@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Doctor Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+    <script type="module">
+      import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+
+      const genAI = new GoogleGenerativeAI(
+        "AIzaSyALWlbXC2RpSrGqzSr7Ubjm_UwSY8W7IbY"
+      );
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      window.getAIResponse = async function () {
+        const name = document.getElementById("patientName").value.trim();
+        const query = document.getElementById("prompt").value.trim();
+
+        if (!name || !query) {
+          document.getElementById("response").innerHTML =
+            "<p style='color: red;'>Please enter both patient name and query.</p>";
+          return;
+        }
+
+        try {
+          // Fetch patient details
+          const patientResponse = await axios.get(
+            `http://localhost:5000/patients/name/${name}`
+          );
+          const patientInfo = patientResponse.data;
+
+          if (!patientInfo) {
+            document.getElementById(
+              "response"
+            ).innerHTML = `<p style='color: red;'>No patient found with name: ${name}</p>`;
+            return;
+          }
+
+          // Generate AI response using patient details and query
+          const fullPrompt = `Patient Details: ${JSON.stringify(
+            patientInfo,
+            null,
+            2
+          )}\n\nQuery: ${query}`;
+          const result = await model.generateContent(fullPrompt);
+
+          const aiResponse =
+            result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (aiResponse) {
+            document.getElementById("response").innerHTML = `
+              <div style="background: #e6f7ff; padding: 10px; border-left: 5px solid blue; border-radius: 5px;">
+                <p><strong>AI Suggestion:</strong></p>
+                <p>${aiResponse.replace(/\n/g, "<br>")}</p>
+              </div>
+            `;
+          } else {
+            document.getElementById("response").innerHTML =
+              "<p style='color: red;'>Unexpected response format.</p>";
+          }
+        } catch (error) {
+          document.getElementById("response").innerHTML =
+            "<p style='color: red;'>Error fetching patient details or generating response.</p>";
+          console.error("Error:", error);
+        }
+      };
+    </script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 20px;
+        background-color: #f4f4f4;
+      }
+      .container {
+        max-width: 600px;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px gray;
+      }
+      textarea,
+      input,
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+      }
+      button {
+        background-color: blue;
+        color: white;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>AI Doctor Assistant</h2>
+      <label for="patientName">Enter Patient Name:</label>
+      <input id="patientName" placeholder="Enter name..." />
+
+      <label for="prompt">Enter Query:</label>
+      <textarea id="prompt" placeholder="Enter your query..."></textarea>
+
+      <button onclick="getAIResponse()">Generate Response</button>
+
+      <h3>Response:</h3>
+      <div id="response"></div>
+    </div>
+  </body>
+</html>
